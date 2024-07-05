@@ -1,0 +1,29 @@
+ {
+  "project_info": {
+    "project_number": "416332909857",
+    "project_id": "stitch-hub-mobile-app",
+    "storage_bucket": "stitch-hub-mobile-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:416332909857:android:596fb89bb8292a30314260",
+        "android_client_info": {
+          "package_name": "com.example.stitchhub_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA__QiAfzKRL3-UznqP4pj5smgLTvWlwC0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
