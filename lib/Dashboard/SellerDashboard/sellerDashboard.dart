@@ -1,19 +1,26 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stitchhub_app/Dashboard/SellerDashboard/productDetail.dart';
 import 'package:stitchhub_app/Dashboard/SellerDashboard/orderDetail.dart';
 import 'package:stitchhub_app/Dashboard/changeProfile.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:stitchhub_app/Dashboard/imagePicker.dart';
 import 'package:stitchhub_app/Dashboard/SellerDashboard/addProduct.dart';
 import 'package:stitchhub_app/Dashboard/SellerDashboard/orderManagement.dart';
 import 'package:stitchhub_app/Dashboard/SellerDashboard/productManagement.dart';
+import 'package:stitchhub_app/Dashboard/inAppMessaging.dart';
 import 'package:stitchhub_app/UserAuthentication/homePage.dart';
 import 'package:stitchhub_app/UserAuthentication/login.dart';
 
@@ -121,6 +128,7 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
 
+  Map<String, dynamic> returnRatio = {};
   late String _storeName = '';
   late String _username = '';
 
@@ -166,6 +174,23 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  Future<double> getPredictedSales(Map<String, dynamic> sellerData) async {
+    final response = await http.post(
+      Uri.parse('http://127.0.0.1:5000/predict-success'),
+      headers: <String, String>{
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(sellerData),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      return responseData['predicted_total_units_sold'];
+    } else {
+      throw Exception('Failed to load prediction');
+    }
+  }
+
   // File? _storeImageFile;
   // final ImagePicker _imagePicker = ImagePicker();
   //
@@ -207,6 +232,7 @@ class _DashboardState extends State<Dashboard> {
   void initState() {
     super.initState();
     _fetchUserData();
+    fetchReturnRatio();
     _fetchActiveProductCount();
     _fetchDraftProductCount();
     _deActiveDraftProductCount();
@@ -215,6 +241,15 @@ class _DashboardState extends State<Dashboard> {
     _fetchShippedOrderCount();
     _fetchDeliveredOrderCount();
     _fetchReturnOrderCount();
+  }
+
+  fetchReturnRatio() async {
+    final response = await http.get(Uri.parse('http://127.0.0.1:5000/return-ratio'));
+    if (response.statusCode == 200) {
+      setState(() {
+        returnRatio = json.decode(response.body);
+      });
+    }
   }
 
   Future<void> _fetchUserData() async {
@@ -445,8 +480,8 @@ class _DashboardState extends State<Dashboard> {
                 children: [
                   SizedBox(height: 10),
                   Container(
-                    height: 150,
-                    width: 380,
+                    height: 150.h,
+                    width: 360.w,
                     decoration: BoxDecoration(
                       // color: Colors.black,
                       // borderRadius: BorderRadius.circular(5),
@@ -483,8 +518,8 @@ class _DashboardState extends State<Dashboard> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                height: 60,
-                                width: 80,
+                                height: 75.h,
+                                width: 80.w,
                                 decoration: BoxDecoration(
                                   // color: Colors.black,
                                   borderRadius: BorderRadius.circular(10),
@@ -521,8 +556,8 @@ class _DashboardState extends State<Dashboard> {
                                 ),
                               ),
                               Container(
-                                height: 60,
-                                width: 80,
+                                height: 75.h,
+                                width: 80.w,
                                 decoration: BoxDecoration(
                                   // color: Colors.black.withOpacity(0.8),
                                   borderRadius: BorderRadius.circular(10),
@@ -559,8 +594,8 @@ class _DashboardState extends State<Dashboard> {
                                 ),
                               ),
                               Container(
-                                height: 60,
-                                width: 80,
+                                height: 75.h,
+                                width: 80.w,
                                 decoration: BoxDecoration(
                                   // color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(10),
@@ -586,19 +621,12 @@ class _DashboardState extends State<Dashboard> {
                                             // color: Colors.white,
                                           )),
                                     ),
-                                    // Text('10', style: TextStyle(fontSize: 10)),
-                                    // IconButton(
-                                    //     onPressed: () {},
-                                    //     icon: Icon(Icons.navigate_next),
-                                    //     iconSize: 13,
-                                    //     color: Colors.white,
-                                    // ),
                                   ],
                                 ),
                               ),
                               Container(
-                                height: 60,
-                                width: 80,
+                                height: 75.h,
+                                width: 80.w,
                                 decoration: BoxDecoration(
                                   // color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(10),
@@ -635,8 +663,8 @@ class _DashboardState extends State<Dashboard> {
                   ),
                   SizedBox(height: 10),
                   Container(
-                    height: 200,
-                    width: 380,
+                    height: 210.h,
+                    width: 360.w,
                     decoration: BoxDecoration(
                       // color: Colors.black,
                       // borderRadius: BorderRadius.circular(5),
@@ -702,8 +730,8 @@ class _DashboardState extends State<Dashboard> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                height: 60,
-                                width: 80,
+                                height: 75.h,
+                                width: 80.w,
                                 decoration: BoxDecoration(
                                   // color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(10),
@@ -753,8 +781,8 @@ class _DashboardState extends State<Dashboard> {
                                 ),
                               ),
                               Container(
-                                height: 60,
-                                width: 80,
+                                height: 75.h,
+                                width: 80.w,
                                 decoration: BoxDecoration(
                                   // color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(10),
@@ -791,8 +819,8 @@ class _DashboardState extends State<Dashboard> {
                                 ),
                               ),
                               Container(
-                                height: 60,
-                                width: 80,
+                                height: 75.h,
+                                width: 80.w,
                                 decoration: BoxDecoration(
                                   // color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(10),
@@ -829,8 +857,8 @@ class _DashboardState extends State<Dashboard> {
                                 ),
                               ),
                               Container(
-                                height: 60,
-                                width: 80,
+                                height: 75.h,
+                                width: 80.w,
                                 decoration: BoxDecoration(
                                   // color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(10),
@@ -874,8 +902,8 @@ class _DashboardState extends State<Dashboard> {
                   ),
                   SizedBox(height: 10),
                   Container(
-                    height: 160,
-                    width: 380,
+                    height: 170.h,
+                    width: 360.w,
                     decoration: BoxDecoration(
                       // color: Colors.black,
                       // borderRadius: BorderRadius.circular(5),
@@ -1128,6 +1156,23 @@ class _DashboardState extends State<Dashboard> {
                       ],
                     ),
                   ),
+                  // SizedBox(height: 10),
+                  // BarChart(
+                  //     BarChartData(
+                  //         barGroups:[
+                  //           BarChartGroupData(
+                  //             x: 0,
+                  //             barRods: [BarChartRodData(toY: 6.22, color: Colors.blue)],
+                  //           ),
+                  //           BarChartGroupData(
+                  //             x: 1,
+                  //             barRods: [BarChartRodData(toY: 7.44, color: Colors.red)],
+                  //           ),
+                  //         ],
+                  //     ),
+                  // ),
+                  SizedBox(height: 10),
+                  // barChartBuild(context),
                   SizedBox(height: 45),
                   Center(child: Text('Stitch Hub ® 2024 - All Rights Reserved.')),
                 ],
@@ -1138,6 +1183,26 @@ class _DashboardState extends State<Dashboard> {
       ),
     );
   }
+
+  Widget barChartBuild(BuildContext context) {
+    return returnRatio.isEmpty
+        ? CircularProgressIndicator()
+        : PieChart(
+      PieChartData(sections: [
+        PieChartSectionData(
+          value: returnRatio['Returned'],
+          color: Colors.red,
+          title: '${returnRatio['Returned']}%',
+        ),
+        PieChartSectionData(
+          value: returnRatio['Not Returned'],
+          color: Colors.green,
+          title: '${returnRatio['Not Returned']}%',
+        ),
+      ]),
+    );
+  }
+
 }
 
 // class ProductCountWidget extends StatelessWidget {
@@ -1197,6 +1262,8 @@ class _InboxState extends State<Inbox> {
 
   @override
   Widget build(BuildContext context) {
+    User? user = FirebaseAuth.instance.currentUser;
+    String? userId = user?.email;
     return MaterialApp(
       home: SafeArea(
         child: Scaffold(
@@ -1263,12 +1330,142 @@ class _InboxState extends State<Inbox> {
               ),
             ],
           ),
-          body: SingleChildScrollView(
-            child: Column(
-              children: [
-                SizedBox(height: 10),
-              ],
-            ),
+          body: StreamBuilder(
+              stream: FirebaseFirestore.instance
+                  .collection('sellers')
+                  .doc(userId)
+                  .collection('chat')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                var chats = snapshot.data?.docs;
+                if (chats == null || chats.isEmpty) {
+                  return Center(
+                    child: Text('No Messages'),
+                  );
+                }
+
+                return ListView.builder(
+                    itemCount: chats.length,
+                    itemBuilder: (context, index) {
+                      var chat = chats[index];
+                      String sellerId = "jawadch447@gmail.com";
+                      print(sellerId);
+
+                      return StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('sellers')
+                            .doc(userId)
+                            .collection('chat')
+                            .doc(sellerId)
+                            .collection('receiveMessages')
+                            .orderBy('timestamp', descending: true)
+                            .snapshots(),
+                        builder: (context, messageSnapshot) {
+                          if (!messageSnapshot.hasData) {
+                            return Center(child: CircularProgressIndicator());
+                          }
+
+                          var messages = messageSnapshot.data?.docs;
+                          if (messages == null || messages.isEmpty) {
+                            return Container();
+                          }
+
+                          var mostRecentMessage = messages.first;
+                          var messaging = mostRecentMessage['message'];
+                          var senderId = mostRecentMessage['senderId'];
+                          var chatImage = mostRecentMessage['chatImage'] ?? '';
+                          var timestamp = mostRecentMessage['timestamp'] as Timestamp;
+                          var date = timestamp.toDate();
+                          var dateTime = DateFormat.yMMMMd().format(date);
+
+                          // var newMessagesCount = messages
+                          //     .where((message) =>
+                          // (message['seenBy'] as List).contains(userId) == false)
+                          //     .length;
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => chatScreen(chatId: sellerId, currentUserId: senderId, receiverName: senderId, isBuyer: false),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              height: 120,
+                              width: double.infinity,
+                              margin: EdgeInsets.all(10),
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                // border: Border.all(color: Colors.grey.withOpacity(0.5)),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundImage: chatImage.isNotEmpty
+                                            ? NetworkImage(chatImage)
+                                            : null,
+                                        child: chatImage.isEmpty
+                                            ? Icon(Icons.person)
+                                            : null,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'Jawad Ch', // Replace with actual store name
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold, fontSize: 20),
+                                      ),
+                                      Spacer(),
+                                      Text(
+                                        dateTime,
+                                        style: TextStyle(
+                                            color: Colors.grey, fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 20),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        messaging,
+                                        style: TextStyle(fontSize: 16),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: 1 > 0
+                                            ? CircleAvatar(
+                                          radius: 10,
+                                          backgroundColor: Colors.blue,
+                                          child: Text(
+                                            '1',
+                                            style: TextStyle(
+                                                color: Colors.white, fontSize: 12),
+                                          ),
+                                        )
+                                            : Container(),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
+                );
+              }
           ),
         ),
       ),

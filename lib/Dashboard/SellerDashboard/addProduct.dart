@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:io' show Platform;
 import 'dart:io' as io;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -9,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:stitchhub_app/Dashboard/SellerDashboard/productListed.dart';
 
 class addProduct extends StatefulWidget {
   const addProduct({super.key});
@@ -63,12 +66,39 @@ class _addProductState extends State<addProduct> {
   String _selectedCategory = '';
   // String? _selectedCategory;
   double containerHeight = 150;
+  double? _predictedPrice;
 
-  @override
-  void initState() {
-    super.initState();
-    _descriptionController.addListener(_updateContainerHeight);
-    _loadCategories();
+  Future<double> getPredictedPrice(String category, String title) async {
+
+    var url = Uri.parse('http://172.16.20.32:5000/predict_price');
+    var response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'category': category, 'title': title}),
+    );
+
+    if (response.statusCode == 200) {
+      var jsonResponse = json.decode(response.body);
+      return jsonResponse['predicted_price'];
+    } else {
+      throw Exception('Failed to predict price');
+    }
+  }
+
+  double roundToNearestHundred(double value) {
+    return (value / 100).round() * 100;
+  }
+
+  void _getPredictedPrice() async {
+    String category = _categoryController.text;
+    String title = _titleController.text;
+
+    double price = await getPredictedPrice(category, title);
+    setState(() {
+      _predictedPrice = roundToNearestHundred(price);
+      _productCostController.text = _predictedPrice!.toStringAsFixed(0);
+      print("${_predictedPrice}");
+    });
   }
 
   Future<void> _loadCategories() async {
@@ -235,7 +265,9 @@ class _addProductState extends State<addProduct> {
         });
         print('User ID: ${userDocRef.id}');
         print('Post added with ID: ${postRef.id}');
-        alertMessage.showAlert(context, 'Success', 'Product successfully listed!');
+
+        Navigator.push(context, MaterialPageRoute(builder: (context) => productSuccessfullyListed()));
+
       }
     } catch (e) {
       print('Error adding product: $e');
@@ -302,14 +334,6 @@ class _addProductState extends State<addProduct> {
     return text.trim().split(' ').where((element) => element.isNotEmpty).length;
   }
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.removeListener(_updateContainerHeight);
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
   void _updateContainerHeight() {
     setState(() {
       containerHeight = _calculateTextHeight(_descriptionController.text) + 50; // Adjust container height based on text input height
@@ -322,6 +346,25 @@ class _addProductState extends State<addProduct> {
     final textPainter = TextPainter(text: textSpan, maxLines: null, textDirection: TextDirection.ltr);
     textPainter.layout(minWidth: 0, maxWidth: MediaQuery.of(context).size.width - 40); // Adjust width as needed
     return textPainter.height;
+  }
+
+
+  @override
+  void initState() {
+    super.initState();
+    _descriptionController.addListener(_updateContainerHeight);
+    _loadCategories();
+    _categoryController.addListener(_getPredictedPrice);
+    // _titleController.addListener(_getPredictedPrice);
+  }
+
+  @override
+  void dispose() {
+    _categoryController.dispose();
+    // _titleController.dispose();
+    _descriptionController.removeListener(_updateContainerHeight);
+    _descriptionController.dispose();
+    super.dispose();
   }
 
   @override
@@ -399,7 +442,7 @@ class _addProductState extends State<addProduct> {
                     ),
                   ),
                   Container(
-                    height: 250,
+                    height: 310,
                     margin: EdgeInsets.all(10),
                     padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -599,6 +642,10 @@ class _addProductState extends State<addProduct> {
                             },
                           ),
                         ),
+                        // ElevatedButton(
+                        //   onPressed: _getPredictedPrice,
+                        //   child: Text('Get'),
+                        // ),
                       ],
                     ),
                   ),
@@ -1106,6 +1153,18 @@ class _addProductState extends State<addProduct> {
                       ],
                     ),
                   ),
+                  SizedBox(height: 5),
+                  if (_predictedPrice != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 10),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info),
+                          SizedBox(width: 5),
+                          Text('Similar Product Price: \R\s\: ${_predictedPrice!.toStringAsFixed(0)}'),
+                        ],
+                      ),
+                    ),
                   SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.all(10.0),

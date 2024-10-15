@@ -9,8 +9,8 @@ import 'package:stitchhub_app/Dashboard/BuyerDashboard/productListScreen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class checkoutProcess extends StatefulWidget {
-
   final String title;
+  final String productSKU;
   final int saleprice;
   final int compareprice;
   final String storeName;
@@ -21,6 +21,7 @@ class checkoutProcess extends StatefulWidget {
 
   const checkoutProcess({
     required this.title,
+    required this.productSKU,
     required this.saleprice,
     required this.compareprice,
     required this.storeName,
@@ -35,7 +36,6 @@ class checkoutProcess extends StatefulWidget {
 }
 
 class _checkoutProcessState extends State<checkoutProcess> {
-
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _consigneeName = TextEditingController();
   final TextEditingController _consigneeEmail = TextEditingController();
@@ -47,17 +47,33 @@ class _checkoutProcessState extends State<checkoutProcess> {
   TextEditingController _expirationDateController = TextEditingController();
   TextEditingController _securityCodeController = TextEditingController();
 
-  List<String> cityCategories = ['Rawalpindi', 'Islamabad', 'Lahore', 'Karachi', 'Peshawar', 'Faisalabad ', 'Abbottabad', 'Attock', 'Chakwal', 'Quetta', 'Rahimyar Khan', 'Sahiwal'];
+  List<String> cityCategories = [
+    'Rawalpindi',
+    'Islamabad',
+    'Lahore',
+    'Karachi',
+    'Peshawar',
+    'Faisalabad ',
+    'Abbottabad',
+    'Attock',
+    'Chakwal',
+    'Quetta',
+    'Rahimyar Khan',
+    'Sahiwal'
+  ];
   String? _selectCity;
   String? _selectedPaymentOption;
 
   String fullName = '';
   String phoneNo = '';
+  String consignEmail = '';
   String address = '';
   String town = '';
   String orderNo = '';
 
-  double _containerHeight = 130;
+  bool isLoading = false;
+
+  double _containerHeight = 140;
 
   String generateOrderNumber() {
     Random random = Random();
@@ -68,7 +84,8 @@ class _checkoutProcessState extends State<checkoutProcess> {
     return orderNumber;
   }
 
-  Future<void> sendEmail(String recipientEmail, String subject, String body) async {
+  Future<void> sendEmail(
+      String recipientEmail, String subject, String body) async {
     // User? user = FirebaseAuth.instance.currentUser;
     // String? email = user?.email;
     // String password = "";
@@ -98,29 +115,46 @@ class _checkoutProcessState extends State<checkoutProcess> {
       ..subject = subject
       ..html = body;
 
-    try{
+    try {
       final sendReport = await send(message, smtpServer);
       print('Message sent: ' + sendReport.toString());
     } catch (e) {
       print('Error sending email: $e');
     }
-
   }
 
-  void confirmOrder(String title, int saleprice, int compareprice, String productSize, int quantity, String imageUrl, int totalBill, String orderNumber) {
+  Future<void> confirmOrder(
+      String title,
+      String productSKU,
+      int saleprice,
+      int compareprice,
+      String productSize,
+      int quantity,
+      String imageUrl,
+      int totalBill,
+      String orderNumber) async {
+
     User? user = FirebaseAuth.instance.currentUser;
     String? userId = user?.email;
 
     String sellerEmail = widget.email;
     String? buyerEmail = userId;
     String buyerSubject = 'New Order ${orderNumber} Confirmation';
-    String buyerBody = 'Thank you for your order. You will get your order with in 2 to 4 working days!';
+    String buyerBody =
+        'Thank you for your order. You will get your order with in 2 to 4 working days!';
     String sellerSubject = 'Your have a New Order';
-    String sellerBody = 'Dear Seller, Your have received a new order ${orderNumber} in Seller Center. Process it now!';
+    String sellerBody =
+        'Dear Seller, Your have received a new order ${orderNumber} in Seller Center. Process it now!';
 
-    FirebaseFirestore.instance.collection('buyers').doc(userId).collection('order').doc(orderNumber).set({
+    FirebaseFirestore.instance
+        .collection('buyers')
+        .doc(userId)
+        .collection('order')
+        .doc(orderNumber)
+        .set({
       'order number': orderNumber,
       'product title': title,
+      'productSKU': productSKU,
       'product price': saleprice,
       'discount price': compareprice,
       'product size': productSize,
@@ -136,9 +170,15 @@ class _checkoutProcessState extends State<checkoutProcess> {
       'dateTime': FieldValue.serverTimestamp(),
     });
 
-    FirebaseFirestore.instance.collection('sellers').doc(sellerEmail).collection('order').doc(orderNumber).set({
+    FirebaseFirestore.instance
+        .collection('sellers')
+        .doc(sellerEmail)
+        .collection('order')
+        .doc(orderNumber)
+        .set({
       'order number': orderNumber,
       'product title': title,
+      'productSKU': productSKU,
       'product price': saleprice,
       'discount price': compareprice,
       'product size': productSize,
@@ -154,11 +194,31 @@ class _checkoutProcessState extends State<checkoutProcess> {
       'dateTime': FieldValue.serverTimestamp(),
     });
 
-    alertMessage.showAlert(context, 'Success', 'You have Successfully Place Your Order against Order ID: ${orderNumber}\nYou will be notifiied soon via Email.');
+    DocumentReference productRef = FirebaseFirestore.instance
+        .collection('sellers')
+        .doc(sellerEmail)
+        .collection('active product')
+        .doc(title);
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      DocumentSnapshot productSnapshot = await transaction.get(productRef);
+
+      if (productSnapshot.exists) {
+        int currentStock = productSnapshot['stock'] ?? 0;
+        int newStock = currentStock - quantity;
+
+        if (newStock < 0) {
+          throw Exception('Not enough stock available.');
+        }
+
+        transaction.update(productRef, {'stock': newStock});
+      }
+    });
+
+    alertMessage.showAlert(context, 'Success',
+        'You have Successfully Place Your Order against Order ID: ${orderNumber}\nYou will be notifiied soon via Email.');
 
     sendEmail(sellerEmail, sellerSubject, sellerBody);
     sendEmail(buyerEmail!, buyerSubject, buyerBody);
-
   }
 
   String? _validateName(String value) {
@@ -181,7 +241,7 @@ class _checkoutProcessState extends State<checkoutProcess> {
   }
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     User? user = FirebaseAuth.instance.currentUser;
     String? userId = user?.email;
     int totalBill = widget.quantity * widget.saleprice;
@@ -206,11 +266,11 @@ class _checkoutProcessState extends State<checkoutProcess> {
                           color: Colors.black, fontWeight: FontWeight.w500)),
                 ),
                 IconButton(
-                    onPressed: () {},
-                    icon: Tooltip(
-                      message: 'Kindly fill entry carefully!',
-                      child: Icon(Icons.help),
-                    ),
+                  onPressed: () {},
+                  icon: Tooltip(
+                    message: 'Kindly fill entry carefully!',
+                    child: Icon(Icons.help),
+                  ),
                 ),
               ],
             ),
@@ -246,17 +306,20 @@ class _checkoutProcessState extends State<checkoutProcess> {
                           height: 70,
                           decoration: BoxDecoration(
                             color: Colors.grey[300],
-                            border: Border.all(color: Colors.black.withOpacity(0.3)),
+                            border: Border.all(
+                                color: Colors.black.withOpacity(0.3)),
                             // borderRadius: BorderRadius.circular(5),
                           ),
                           child: widget.imageURL1 != null
-                              ? Image.network(widget.imageURL1, fit: BoxFit.cover)
-                              : DecoratedBox(decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage('assets/product1.jpg'),
-                              fit: BoxFit.cover,
-                            ),
-                          )),
+                              ? Image.network(widget.imageURL1,
+                                  fit: BoxFit.cover)
+                              : DecoratedBox(
+                                  decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: AssetImage('assets/product1.jpg'),
+                                    fit: BoxFit.cover,
+                                  ),
+                                )),
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 15, left: 10),
@@ -266,7 +329,8 @@ class _checkoutProcessState extends State<checkoutProcess> {
                               Flexible(
                                 child: Container(
                                   width: 200,
-                                  child: Text('${widget.title}',
+                                  child: Text(
+                                    '${widget.title}',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
@@ -397,7 +461,8 @@ class _checkoutProcessState extends State<checkoutProcess> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                           child: TextFormField(
                             controller: _consigneeName,
                             decoration: InputDecoration(
@@ -410,8 +475,7 @@ class _checkoutProcessState extends State<checkoutProcess> {
                               ),
                               enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(10)
-                              ),
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
                             validator: (value) => _validateName(value!),
                             onChanged: (value) {
@@ -422,11 +486,12 @@ class _checkoutProcessState extends State<checkoutProcess> {
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                           child: TextFormField(
                             controller: _consigneeEmail,
                             decoration: InputDecoration(
-                              hintText: 'Email (Optional)',
+                              hintText: 'Email',
                               // fillColor: Color(0xffE5EFF0),
                               // filled: true,
                               suffixIcon: Icon(Icons.alternate_email),
@@ -435,13 +500,28 @@ class _checkoutProcessState extends State<checkoutProcess> {
                               ),
                               enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(10)
-                              ),
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Email is required';
+                              } else if (_consigneeEmail.text.trim() !=
+                                  userId) {
+                                return 'Email is not matched with register email';
+                              } else {
+                                return null;
+                              }
+                            },
+                            onChanged: (value) {
+                              setState(() {
+                                consignEmail = value;
+                              });
+                            },
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                           child: TextFormField(
                             controller: _consigneePhoneNo,
                             decoration: InputDecoration(
@@ -454,8 +534,7 @@ class _checkoutProcessState extends State<checkoutProcess> {
                               ),
                               enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(10)
-                              ),
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -502,7 +581,8 @@ class _checkoutProcessState extends State<checkoutProcess> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                           child: TextFormField(
                             controller: _consigneeAddress,
                             decoration: InputDecoration(
@@ -515,8 +595,7 @@ class _checkoutProcessState extends State<checkoutProcess> {
                               ),
                               enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(10)
-                              ),
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
                             validator: ((value) {
                               if (value == null || value.isEmpty) {
@@ -532,7 +611,8 @@ class _checkoutProcessState extends State<checkoutProcess> {
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                           child: TextFormField(
                             controller: _addressTown,
                             decoration: InputDecoration(
@@ -544,8 +624,7 @@ class _checkoutProcessState extends State<checkoutProcess> {
                               ),
                               enabledBorder: OutlineInputBorder(
                                   borderSide: BorderSide(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(10)
-                              ),
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
                             validator: ((value) {
                               if (value == null || value.isEmpty) {
@@ -561,7 +640,8 @@ class _checkoutProcessState extends State<checkoutProcess> {
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                           child: Container(
                             height: 60,
                             width: 380,
@@ -585,8 +665,7 @@ class _checkoutProcessState extends State<checkoutProcess> {
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                     borderSide: BorderSide(color: Colors.grey),
-                                    borderRadius: BorderRadius.circular(10)
-                                ),
+                                    borderRadius: BorderRadius.circular(10)),
                               ),
                             ),
                           ),
@@ -624,7 +703,7 @@ class _checkoutProcessState extends State<checkoutProcess> {
                           onChanged: (value) {
                             setState(() {
                               _selectedPaymentOption = value;
-                              _containerHeight = value == 'Online' ? 320 : 130;
+                              _containerHeight = value == 'Online' ? 380 : 140;
                             });
                           },
                         ),
@@ -633,62 +712,99 @@ class _checkoutProcessState extends State<checkoutProcess> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              TextFormField(
-                                controller: _cardNumberController,
-                                decoration: InputDecoration(
-                                  labelText: 'Card Number',
-                                  hintText: 'Enter card number',
-                                  contentPadding: EdgeInsets.only(top: 20, left: 10),
-                                  focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.blueAccent),
-                                      borderRadius: BorderRadius.circular(5)
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(5)
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              TextFormField(
-                                controller: _securityCodeController,
-                                decoration: InputDecoration(
-                                  labelText: 'CCV',
-                                  hintText: 'Enter security code',
-                                  contentPadding: EdgeInsets.only(top: 20, left: 10),
-                                  focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.blueAccent),
-                                      borderRadius: BorderRadius.circular(5)
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(5)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 30),
+                                child: TextFormField(
+                                  controller: _cardNumberController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Card Number',
+                                    hintText: 'Enter card number',
+                                    contentPadding:
+                                        EdgeInsets.only(top: 20, left: 10),
+                                    focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                            color: Colors.blueAccent),
+                                        borderRadius: BorderRadius.circular(5)),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(5)),
                                   ),
                                 ),
                               ),
                               SizedBox(height: 10),
-                              TextFormField(
-                                controller: _expirationDateController,
-                                keyboardType: TextInputType.numberWithOptions(decimal: false),
-                                maxLength: 5,
-                                decoration: InputDecoration(
-                                  labelText: 'Expire Data',
-                                  hintText: 'MM/YY',
-                                  contentPadding: EdgeInsets.only(top: 20, left: 10),
-                                  focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.blueAccent),
-                                      borderRadius: BorderRadius.circular(5)
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(5)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 30),
+                                child: TextFormField(
+                                  controller: _securityCodeController,
+                                  decoration: InputDecoration(
+                                    labelText: 'CCV',
+                                    hintText: 'Enter security code',
+                                    contentPadding:
+                                        EdgeInsets.only(top: 20, left: 10),
+                                    focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                            color: Colors.blueAccent),
+                                        borderRadius: BorderRadius.circular(5)),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(5)),
                                   ),
                                 ),
-                                onChanged: (text) {
-                                  if (text.length == 2 && !_expirationDateController.text.contains('/')) {
-                                    _expirationDateController.value = _expirationDateController.value.copyWith(
-                                      text: text + '/',
-                                      selection: TextSelection.collapsed(offset: text.length + 1),
-                                    );
-                                  }
-                                },
+                              ),
+                              SizedBox(height: 10),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 30),
+                                child: TextFormField(
+                                  controller: _expirationDateController,
+                                  keyboardType: TextInputType.numberWithOptions(
+                                      decimal: false),
+                                  maxLength: 5,
+                                  decoration: InputDecoration(
+                                    labelText: 'Expire Data',
+                                    hintText: 'MM/YY',
+                                    contentPadding:
+                                        EdgeInsets.only(top: 20, left: 10),
+                                    focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                            color: Colors.blueAccent),
+                                        borderRadius: BorderRadius.circular(5)),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(5)),
+                                  ),
+                                  onChanged: (text) {
+                                    if (text.length == 2 &&
+                                        !_expirationDateController.text
+                                            .contains('/')) {
+                                      _expirationDateController.value =
+                                          _expirationDateController.value
+                                              .copyWith(
+                                        text: text + '/',
+                                        selection: TextSelection.collapsed(
+                                            offset: text.length + 1),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 30),
+                                child: Center(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: TextButton(
+                                      onPressed: () {},
+                                      child: Text('Pay Now',
+                                          style:
+                                              TextStyle(color: Colors.white)),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -700,7 +816,7 @@ class _checkoutProcessState extends State<checkoutProcess> {
                           onChanged: (value) {
                             setState(() {
                               _selectedPaymentOption = value;
-                              _containerHeight = 130;
+                              _containerHeight = 140;
                             });
                           },
                         ),
@@ -718,28 +834,38 @@ class _checkoutProcessState extends State<checkoutProcess> {
                       ),
                       child: TextButton(
                         onPressed: () {
-                          if(_formKey.currentState!.validate())
-                          {
+                          if (_formKey.currentState!.validate()) {
                             showDialog(
                                 context: context,
                                 builder: (context) => Center(
-                                  child: Container(
-                                    height: 80,
-                                    width: 120,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
+                                      child: Container(
+                                        height: 80,
+                                        width: 120,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.3),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                ));
+                                    ));
                             orderNo = generateOrderNumber();
                             print("Order Number: ${orderNo}");
-                            confirmOrder(widget.title, widget.saleprice, widget.compareprice, widget.productSize, widget.quantity, widget.imageURL1, totalBill, orderNo);
+                            confirmOrder(
+                                widget.title,
+                                widget.productSKU,
+                                widget.saleprice,
+                                widget.compareprice,
+                                widget.productSize,
+                                widget.quantity,
+                                widget.imageURL1,
+                                totalBill,
+                                orderNo);
+                            Navigator.pop(context);
                           }
                         },
                         child: Center(
@@ -755,7 +881,8 @@ class _checkoutProcessState extends State<checkoutProcess> {
                     ),
                   ),
                   SizedBox(height: 45),
-                  Center(child: Text('Stitch Hub ® 2024 - All Rights Reserved.')),
+                  Center(
+                      child: Text('Stitch Hub ® 2024 - All Rights Reserved.')),
                 ],
               ),
             ),
@@ -766,9 +893,8 @@ class _checkoutProcessState extends State<checkoutProcess> {
   }
 }
 
-class alertMessage{
-
-  static void showAlert(BuildContext context, String title, String message){
+class alertMessage {
+  static void showAlert(BuildContext context, String title, String message) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -777,7 +903,8 @@ class alertMessage{
           content: Text(message),
           actions: [
             TextButton(
-              onPressed: () {Navigator.of(context).pop();
+              onPressed: () {
+                Navigator.of(context).pop();
               },
               child: Text('OK'),
             ),

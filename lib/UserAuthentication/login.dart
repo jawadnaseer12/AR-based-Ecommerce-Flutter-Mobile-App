@@ -54,6 +54,7 @@ class _loginState extends State<login> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         body: _buildLoginForm(),
       ),

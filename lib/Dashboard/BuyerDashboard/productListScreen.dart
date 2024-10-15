@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'dart:math';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
+// import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,10 +11,13 @@ import 'package:stitchhub_app/Dashboard/BuyerDashboard/shoppingCart.dart';
 import 'package:stitchhub_app/Dashboard/BuyerDashboard/checkoutProcess.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:stitchhub_app/Dashboard/inAppMessaging.dart';
+import 'package:intl/intl.dart';
 
 class productListScreen extends StatefulWidget {
   final String title;
+  final String category;
   final String description;
+  final String productSKU;
   final int saleprice;
   final int compareprice;
   final String storeName;
@@ -24,7 +30,9 @@ class productListScreen extends StatefulWidget {
 
   const productListScreen({
     required this.title,
+    required this.category,
     required this.description,
+    required this.productSKU,
     required this.saleprice,
     required this.compareprice,
     required this.storeName,
@@ -54,11 +62,28 @@ class _productListScreenState extends State<productListScreen> {
   TextEditingController _collarSizeController = TextEditingController();
 
   String? _selectedSizeOption;
-  double _containerHeight = 180;
+  double _containerHeight = 190;
   String newChatID = '';
 
   File? _scanImage;
   final picker = ImagePicker();
+
+  Map<String, String> chartSizeImages = {
+    'Waistcoat': 'assets/WaistCoatChart.jpg',
+    'Dress Shirt': 'assets/FormalShirtChart.jpg',
+    'Checkshirt': 'assets/CasualShirtChart.jpg',
+    'T-Shirt': 'assets/CrewNeckChart.jpg',
+    'Polo Shirt': 'assets/PoloShirtChart.jpg',
+    '3 Piece': 'assets/SuitingChart.jpg',
+    'Kameez Shalwar': 'assets/KameezShalwarChart.jpg',
+    'Kurta': 'assets/KurtaPajamaChart.jpg',
+  };
+
+  String? getChartImage(String category) {
+
+    return chartSizeImages[category];
+
+  }
 
   String generateChatId() {
     Random random = Random();
@@ -78,12 +103,150 @@ class _productListScreenState extends State<productListScreen> {
     }
   }
 
-  void _selectGalleryImage() async {
-    final imagePicker = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> uploadAndMeasure(File image) async {
+    if (image != null) {
+      var request = http.MultipartRequest(
+          'POST', Uri.parse('http://192.168.10.31:5000/pose_upload'));
+
+      request.files.add(await http.MultipartFile.fromPath('image', image.path));
+    }
   }
 
-  void _selectCameraImage() async {
+  void _pickImageAndUpload() async {
+    // showDialog(
+    //   context: context,
+    //   barrierDismissible: false,
+    //   builder: (context) => Center(child: CircularProgressIndicator()),
+    // );
+
+    File? image = await _selectGalleryImage();
+
+    // Navigator.of(context).pop();
+
+    if (image != null) {
+      await uploadAndMeasure(image);
+    } else {
+      print("No image selected.");
+    }
+  }
+
+  // Future<File?> _openCameraForTryOn() async {
+  //   final imagePicker = await picker.pickImage(source: ImageSource.camera);
+  //   if (imagePicker != null) {
+  //
+  //   }
+  //   return null;
+  // }
+
+  void tryOnCloth() async{
     final imagePicker = await picker.pickImage(source: ImageSource.camera);
+    if (imagePicker != null) {
+
+    }
+  }
+
+  void _showImageDialog(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          child: Container(
+            height: 700,
+            child: Stack(
+              children: [
+                Center(
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                Positioned(
+                  top: 20,
+                  right: 20,
+                  child: IconButton(
+                    icon: Icon(Icons.close, color: Colors.white, size: 30),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+                Positioned(
+                  bottom: 20,
+                  right: 20,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // FloatingActionButton(
+                      //   backgroundColor: Colors.red,
+                      //   child: Icon(Icons.close),
+                      //   onPressed: () {
+                      //     Navigator.of(context).pop();
+                      //   },
+                      // ),
+                      SizedBox(width: 10),
+                      FloatingActionButton(
+                        backgroundColor: Colors.white,
+                        child: Icon(Icons.arrow_forward, color: Colors.black),
+                        onPressed: () {
+                          _pickImageAndUpload();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<String?> _uploadImageToFirebase(File image) async {
+    try {
+      final storageRef =
+          FirebaseStorage.instance.ref().child('landmarkImage/$image');
+      await storageRef.putFile(image);
+      return await storageRef.getDownloadURL();
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  void _onImageSelected(File image) async {
+    // showDialog(
+    //   context: context,
+    //   barrierDismissible: false,
+    //   builder: (context) => Center(child: CircularProgressIndicator()),
+    // );
+
+    String? imageUrl = await _uploadImageToFirebase(image);
+
+    // Navigator.of(context).pop();
+
+    if (imageUrl != null) {
+      _showImageDialog(imageUrl);
+    }
+  }
+
+  Future<File?> _selectGalleryImage() async {
+    final imagePicker = await picker.pickImage(source: ImageSource.gallery);
+    if (imagePicker != null) {
+      _onImageSelected(File(imagePicker.path));
+      return File(imagePicker.path);
+    }
+    return null;
+  }
+
+  Future<File?> _selectCameraImage() async {
+    final imagePicker = await picker.pickImage(source: ImageSource.camera);
+    if (imagePicker != null) {
+      _onImageSelected(File(imagePicker.path));
+      return File(imagePicker.path);
+    }
+    return null;
   }
 
   void _showScanSizeDialog() {
@@ -195,9 +358,11 @@ class _productListScreenState extends State<productListScreen> {
 
   void addToCart(
       String title,
+      String category,
       int saleprice,
       int compareprice,
       String description,
+      String productSKU,
       String storename,
       String storePhoneNo,
       String storeEmail,
@@ -214,9 +379,11 @@ class _productListScreenState extends State<productListScreen> {
         .collection('cart')
         .add({
       'product title': title,
+      'product category': category,
       'product price': saleprice,
       'discount price': compareprice,
       'product description': description,
+      'productSKU': productSKU,
       'store name': storename,
       'store phoneNo': storePhoneNo,
       'store email': storeEmail,
@@ -234,6 +401,21 @@ class _productListScreenState extends State<productListScreen> {
   Widget build(BuildContext context) {
     final String currentUserId = getCurrentUserId();
     List<String> keywords = extractKeywords(widget.title);
+
+    List<String> imageUrls = [
+      widget.imageURL1,
+      widget.imageURL2,
+      widget.imageURL3,
+      widget.imageURL4
+    ];
+
+    imageUrls = imageUrls.where((url) => url.isNotEmpty).toList();
+
+    final int salePrice = widget.saleprice;
+    final int comparePrice = widget.compareprice;
+    final double discountPercentage =
+        ((comparePrice - salePrice) / comparePrice) * 100;
+
     return MaterialApp(
       home: SafeArea(
         child: Scaffold(
@@ -248,31 +430,17 @@ class _productListScreenState extends State<productListScreen> {
                     },
                     icon: Icon(Icons.navigate_before),
                   ),
-                  Container(
-                    width: 250,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 5),
-                        child: Text('${widget.title}',
-                            style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.w500)),
-                      ),
-                    ),
-                  ),
-                  // IconButton(
-                  //   onPressed: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(builder: (context) => shoppingCart()),
-                  //     );
-                  //   },
-                  //   icon: SizedBox(
-                  //     height: 20,
-                  //     width: 20,
-                  //     child: Icon(Icons.shopping_cart),
-                  //     // Image(image: AssetImage('assets/shoppingcart.png')),
+                  // Container(
+                  //   width: 250,
+                  //   child: SingleChildScrollView(
+                  //     scrollDirection: Axis.horizontal,
+                  //     child: Padding(
+                  //       padding: EdgeInsets.symmetric(vertical: 5),
+                  //       child: Text('${widget.title}',
+                  //           style: TextStyle(
+                  //               color: Colors.black,
+                  //               fontWeight: FontWeight.w500)),
+                  //     ),
                   //   ),
                   // ),
                 ],
@@ -331,7 +499,29 @@ class _productListScreenState extends State<productListScreen> {
                   children: [
                     SizedBox(height: 5),
                     Center(
-                      child: Container(
+                      child:
+                      // CarouselSlider(
+                      //   options: CarouselOptions(
+                      //     height: 450,
+                      //     aspectRatio: 1,
+                      //     viewportFraction: 1.0,
+                      //     enlargeCenterPage: false,
+                      //     enableInfiniteScroll: false,
+                      //     autoPlay: true,
+                      //   ),
+                      //   items: imageUrls.map((imageUrl) {
+                      //     return Container(
+                      //       width: 380,
+                      //       decoration: BoxDecoration(
+                      //         color: Colors.grey[300],
+                      //         border: Border.all(
+                      //             color: Colors.black.withOpacity(0.3)),
+                      //       ),
+                      //       child: Image.network(imageUrl, fit: BoxFit.cover),
+                      //     );
+                      //   }).toList(),
+                      // ),
+                      Container(
                         height: 380,
                         width: 380,
                         decoration: BoxDecoration(
@@ -367,31 +557,85 @@ class _productListScreenState extends State<productListScreen> {
                     Center(
                       child: Container(
                         width: 380,
-                        child: RichText(
-                          text: TextSpan(
-                            text: '\R\s\. ',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                RichText(
+                                  text: TextSpan(
+                                    text: '\R\s\. ',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      // fontWeight: FontWeight.bold,
+                                      fontSize: 20,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: '${widget.saleprice}  ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 25,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: '${widget.compareprice}',
+                                        style: TextStyle(
+                                          decoration:
+                                              TextDecoration.lineThrough,
+                                          fontSize: 25,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Text(
+                                    '${discountPercentage.toStringAsFixed(0)}% OFF',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            children: [
-                              TextSpan(
-                                text: '${widget.saleprice}  ',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 25,
+                            GestureDetector(
+                              onTap: () {
+                                tryOnCloth();
+                              },
+                              child: Container(
+                                height: 50,
+                                width: 50,
+                                decoration: BoxDecoration(
+                                  // border: Border.all(
+                                  //   color: Colors.black,
+                                  //   width: 1.5,
+                                  // ),
+                                  // color: Colors.transparent,
+                                  // borderRadius: BorderRadius.circular(10),
+                                  // boxShadow: [
+                                  //   BoxShadow(
+                                  //     color: Colors.black.withOpacity(0.5),
+                                  //     spreadRadius: 2,
+                                  //     blurRadius: 10,
+                                  //     offset: Offset(4, 4),
+                                  //   ),
+                                  // ]
                                 ),
+                                child: Center(
+                                    child: Image(
+                                        image: AssetImage('assets/whiteHanger.png'), height: 45, width: 45)),
                               ),
-                              TextSpan(
-                                text: '${widget.compareprice}',
-                                style: TextStyle(
-                                  decoration: TextDecoration.lineThrough,
-                                  fontSize: 25,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -403,7 +647,7 @@ class _productListScreenState extends State<productListScreen> {
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: Colors.black,
-                            width: 2.0,
+                            width: 1.5,
                           ),
                           color: Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
@@ -412,9 +656,11 @@ class _productListScreenState extends State<productListScreen> {
                           onPressed: () {
                             addToCart(
                                 widget.title,
+                                widget.category,
                                 widget.saleprice,
                                 widget.compareprice,
                                 widget.description,
+                                widget.productSKU,
                                 widget.storeName,
                                 widget.phoneNum,
                                 widget.email,
@@ -451,6 +697,7 @@ class _productListScreenState extends State<productListScreen> {
                               MaterialPageRoute(
                                   builder: (context) => checkoutProcess(
                                         title: widget.title,
+                                        productSKU: widget.productSKU,
                                         saleprice: widget.saleprice,
                                         compareprice: widget.compareprice,
                                         storeName: widget.storeName,
@@ -484,7 +731,7 @@ class _productListScreenState extends State<productListScreen> {
                             style: TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: 22,
+                              fontSize: 20,
                             ),
                           ),
                           Row(
@@ -501,12 +748,12 @@ class _productListScreenState extends State<productListScreen> {
                               ),
                               Container(
                                 height: 50,
-                                width: 60,
+                                width: 50,
                                 padding: EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: Colors.black,
-                                    width: 2.0,
+                                    width: 1.5,
                                   ),
                                   color: Colors.transparent,
                                   borderRadius: BorderRadius.circular(5),
@@ -537,16 +784,83 @@ class _productListScreenState extends State<productListScreen> {
                     ),
                     SizedBox(height: 5),
                     Padding(
-                      padding: const EdgeInsets.only(left: 15),
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             'Size: ',
                             style: TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: 22,
+                              fontSize: 20,
                             ),
+                          ),
+                          TextButton(
+                              onPressed: () {
+
+                                String? chartImage = getChartImage(widget.category);
+
+                                if (chartImage != null) {
+                                  showDialog(
+                                      context: context,
+                                      builder: (context) => Dialog(
+                                        backgroundColor: Colors.white,
+                                        child: Container(
+                                          height: 500,
+                                          child: Stack(
+                                            children: [
+                                              Center(
+                                                child: Image.asset(
+                                                  chartImage,
+                                                  fit: BoxFit.contain,
+                                                ),
+                                              ),
+                                              Positioned(
+                                                top: 20,
+                                                right: 20,
+                                                child: IconButton(
+                                                  icon: Icon(Icons.close, color: Colors.black, size: 30),
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  );
+                                } else {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => Dialog(
+                                      backgroundColor: Colors.white,
+                                      child: Container(
+                                        height: 500,
+                                        child: Stack(
+                                          children: [
+                                            Center(
+                                              child: Text('No Size Chart Available', style: TextStyle(color: Colors.black)),
+                                            ),
+                                            Positioned(
+                                              top: 20,
+                                              right: 20,
+                                              child: IconButton(
+                                                icon: Icon(Icons.close, color: Colors.black, size: 30),
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Text('Size Chart'),
                           ),
                         ],
                       ),
@@ -571,7 +885,7 @@ class _productListScreenState extends State<productListScreen> {
                               setState(() {
                                 _selectedSizeOption = value;
                                 _containerHeight =
-                                    value == 'selectSize' ? 250 : 180;
+                                    value == 'selectSize' ? 250 : 190;
                               });
                             },
                           ),
@@ -618,7 +932,7 @@ class _productListScreenState extends State<productListScreen> {
                               setState(() {
                                 _selectedSizeOption = value;
                                 _containerHeight =
-                                    value == 'inputSize' ? 380 : 180;
+                                    value == 'inputSize' ? 380 : 190;
                               });
                             },
                           ),
@@ -784,7 +1098,7 @@ class _productListScreenState extends State<productListScreen> {
                               setState(() {
                                 _selectedSizeOption = value;
                                 _containerHeight =
-                                    value == 'scanSize' ? 270 : 180;
+                                    value == 'scanSize' ? 270 : 190;
                               });
                             },
                           ),
@@ -839,7 +1153,7 @@ class _productListScreenState extends State<productListScreen> {
                             style: TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: 22,
+                              fontSize: 20,
                             ),
                           ),
                           SizedBox(height: 5),
@@ -856,28 +1170,6 @@ class _productListScreenState extends State<productListScreen> {
                         ],
                       ),
                     ),
-                    // Center(
-                    //   child: Container(
-                    //     width: 380,
-                    //     child: Text('Description:',
-                    //       style: TextStyle(
-                    //         color: Colors.black,
-                    //         fontWeight: FontWeight.bold,
-                    //         fontSize: 22,
-                    //       ),
-                    //     ),
-                    //   ),
-                    // ),
-                    // SizedBox(height: 5),
-                    // Center(
-                    //   child: Container(
-                    //     width: 380,
-                    //     child: Text('${widget.description}',
-                    //       style: TextStyle(
-                    //           color: Colors.black, fontSize: 20),
-                    //     ),
-                    //   ),
-                    // ),
                     SizedBox(height: 30),
                     Center(
                       child: Container(
@@ -928,9 +1220,13 @@ class _productListScreenState extends State<productListScreen> {
                                                 MaterialPageRoute(
                                                     builder: (context) =>
                                                         chatScreen(
-                                                            chatId: newChatID,
-                                                            currentUserId:
-                                                                currentUserId)));
+                                                          chatId: newChatID,
+                                                          currentUserId:
+                                                              widget.email,
+                                                          receiverName:
+                                                              widget.storeName,
+                                                          isBuyer: true,
+                                                        )));
                                           },
                                           child: Center(
                                             child: Text(
@@ -989,6 +1285,220 @@ class _productListScreenState extends State<productListScreen> {
                         ),
                       ),
                     ),
+                    SizedBox(height: 15),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Rating & Review',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Center(
+                            child: Container(
+                              height: 200,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                    color: Colors.grey.withOpacity(0.5)),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: StreamBuilder(
+                                stream: FirebaseFirestore.instance
+                                    .collection('sellers')
+                                    .doc(widget.email)
+                                    .collection('active product')
+                                    .snapshots(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasError) {
+                                    return Text('Error: ${snapshot.error}');
+                                  }
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return Center(
+                                        child: CircularProgressIndicator());
+                                  }
+
+                                  var reviews = snapshot.data?.docs;
+
+                                  if (reviews == null || reviews.isEmpty) {
+                                    return Center(
+                                        child: Text(
+                                            'This product has no reviews.'));
+                                  }
+
+                                  bool hasReviews = false;
+
+                                  return SingleChildScrollView(
+                                    child: Column(
+                                      children: reviews.map((review) {
+                                        return StreamBuilder<
+                                            QuerySnapshot<
+                                                Map<String, dynamic>>>(
+                                          stream: FirebaseFirestore.instance
+                                              .collection('sellers')
+                                              .doc(widget.email)
+                                              .collection('active product')
+                                              .doc(review.id)
+                                              .collection('product review')
+                                              .where('product title',
+                                                  isEqualTo: widget.title)
+                                              .snapshots(),
+                                          builder: (context, snapshot) {
+                                            if (snapshot.hasError) {
+                                              return Center(
+                                                  child: Text(
+                                                      'Error: ${snapshot.error}'));
+                                            }
+
+                                            var productReviews =
+                                                snapshot.data?.docs;
+
+                                            if (productReviews != null &&
+                                                productReviews.isNotEmpty) {
+                                              hasReviews = true;
+                                              return Column(
+                                                children: productReviews
+                                                    .map((productReview) {
+                                                  var reviewData =
+                                                      productReview.data();
+                                                  var customerName = reviewData[
+                                                      'consignee name'];
+                                                  var reviewText =
+                                                      reviewData['review'];
+
+                                                  return Container(
+                                                    margin:
+                                                        EdgeInsets.symmetric(
+                                                            vertical: 8.0,
+                                                            horizontal: 8.0),
+                                                    padding:
+                                                        EdgeInsets.all(8.0),
+                                                    decoration: BoxDecoration(
+                                                      border: Border.all(
+                                                          color: Colors.grey
+                                                              .withOpacity(
+                                                                  0.5)),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              20.0),
+                                                    ),
+                                                    child: Column(
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            CircleAvatar(
+                                                              backgroundImage:
+                                                                  AssetImage(
+                                                                      'assets/avatar.png'),
+                                                              radius: 22.0,
+                                                            ),
+                                                            SizedBox(
+                                                                width: 12.0),
+                                                            Expanded(
+                                                              child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                                  Text(
+                                                                    customerName,
+                                                                    style:
+                                                                        TextStyle(
+                                                                      fontSize:
+                                                                          16.0,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                  Image(
+                                                                    image: AssetImage(
+                                                                        'assets/productRating.png'),
+                                                                    height: 30,
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        SizedBox(height: 5.0),
+                                                        Text(
+                                                          reviewText,
+                                                          style: TextStyle(
+                                                              fontSize: 14.0),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              );
+                                            } else {
+                                              // Return an empty Container when there are no reviews for this specific product
+                                              return Container();
+                                            }
+                                          },
+                                        );
+                                      }).toList(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 15),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Questions About This Product',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  decoration: InputDecoration(
+                                    labelText: 'Ask Question',
+                                    hintText: 'Enter your message',
+                                    contentPadding:
+                                        EdgeInsets.only(top: 20, left: 10),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderSide:
+                                            BorderSide(color: Colors.grey),
+                                        borderRadius:
+                                            BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.send),
+                                onPressed: () {},
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                     SizedBox(height: 45),
                     Column(
                       children: [
@@ -1041,8 +1551,11 @@ class _productListScreenState extends State<productListScreen> {
                                           children:
                                               products.map<Widget>((product) {
                                             String title = product['title'];
+                                            String category = product['category'];
                                             String description =
                                                 product['description'];
+                                            String productSKU =
+                                                product['productSKU'];
                                             String imageUrl1 =
                                                 product['imageUrl1'] ?? '';
                                             String imageUrl2 =
@@ -1064,8 +1577,11 @@ class _productListScreenState extends State<productListScreen> {
                                                       builder: (context) =>
                                                           productListScreen(
                                                             title: title,
+                                                            category: category,
                                                             description:
                                                                 description,
+                                                            productSKU:
+                                                                productSKU,
                                                             saleprice:
                                                                 saleprice,
                                                             compareprice:
@@ -1215,8 +1731,11 @@ class _productListScreenState extends State<productListScreen> {
                                               children: relatedProducts
                                                   .map<Widget>((product) {
                                                 String title = product['title'];
+                                                String category = product['category'];
                                                 String description =
                                                     product['description'];
+                                                String productSKU =
+                                                    product['productSKU'];
                                                 String imageUrl1 =
                                                     product['imageUrl1'] ?? '';
                                                 String imageUrl2 =
@@ -1238,8 +1757,11 @@ class _productListScreenState extends State<productListScreen> {
                                                           builder: (context) =>
                                                               productListScreen(
                                                                 title: title,
+                                                                category: category,
                                                                 description:
                                                                     description,
+                                                                productSKU:
+                                                                    productSKU,
                                                                 saleprice:
                                                                     saleprice,
                                                                 compareprice:

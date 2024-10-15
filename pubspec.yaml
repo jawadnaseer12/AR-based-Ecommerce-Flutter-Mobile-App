@@ -36,6 +36,7 @@ dependencies:
   google_sign_in: ^6.2.1
   firebase_storage: ^11.7.0
   flutter_facebook_auth: ^6.2.0
+  fl_chart: ^0.69.0
 
   # State Management
   provider: ^6.1.2
@@ -44,12 +45,14 @@ dependencies:
   # Google font
   font_awesome_flutter: ^10.7.0
   flutter_screenutil: ^5.9.0
+  rxdart: ^0.28.0
 
+  http: ^1.2.1
   get: ^4.6.6
   image_picker: ^1.0.7
   video_player: ^2.8.3
   location: ^6.0.1
-  carousel_slider: ^4.2.1
+  carousel_slider: ^4.1.0
   mailer: ^6.1.0
 
   # The following adds the Cupertino Icons font to your application.

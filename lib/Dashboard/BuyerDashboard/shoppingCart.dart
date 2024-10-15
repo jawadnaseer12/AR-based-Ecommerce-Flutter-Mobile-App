@@ -103,9 +103,11 @@ class _shoppingCartState extends State<shoppingCart> {
                           var cartItem = snapshot.data!.docs[index].data() as Map<String, dynamic>;
 
                           var title = cartItem['product title'];
+                          var category = cartItem['product category'];
                           var saleprice = cartItem['product price'];
                           var discount = cartItem['discount price'];
                           var description = cartItem['product description'] ?? '';
+                          var productSKU = cartItem['productSKU'] ?? '';
                           var storename = cartItem['store name'] ?? '';
                           var storePhoneNo = cartItem['store phoneNo'] ?? '';
                           var storeEmail = cartItem['store email'] ?? '';
@@ -197,7 +199,7 @@ class _shoppingCartState extends State<shoppingCart> {
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 color: Colors.black,
-                                                fontWeight: FontWeight.bold,
+                                                // fontWeight: FontWeight.bold,
                                               ),
                                               children: [
                                                 TextSpan(
@@ -282,7 +284,7 @@ class _shoppingCartState extends State<shoppingCart> {
                                                 color: Colors.black,
                                                 width: 1.0,
                                               ),
-                                              color: Colors.white,
+                                              color: Colors.transparent,
                                               borderRadius: BorderRadius.circular(5),
                                             ),
                                             child: TextButton(
@@ -291,7 +293,9 @@ class _shoppingCartState extends State<shoppingCart> {
                                                   context,
                                                   MaterialPageRoute(builder: (context) => productListScreen(
                                                     title: title,
+                                                    category: category,
                                                     description: description,
+                                                    productSKU: productSKU,
                                                     saleprice: saleprice,
                                                     compareprice: discount,
                                                     storeName: storename,
@@ -329,6 +333,7 @@ class _shoppingCartState extends State<shoppingCart> {
                                                   context,
                                                   MaterialPageRoute(builder: (context) => checkoutProcess(
                                                     title: title,
+                                                    productSKU: productSKU,
                                                     saleprice: saleprice,
                                                     compareprice: discount,
                                                     storeName: storename,

@@ -65,7 +65,7 @@ class OrderManagement {
       QuerySnapshot deliveredOrderSnapshot = await FirebaseFirestore.instance
           .collection('sellers')
           .doc(userId)
-          .collection('delivered order')
+          .collection('deliver order')
           .get();
 
       return deliveredOrderSnapshot.size;

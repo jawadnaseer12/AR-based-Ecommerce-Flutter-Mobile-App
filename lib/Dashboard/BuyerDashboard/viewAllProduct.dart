@@ -7,7 +7,9 @@ import 'package:stitchhub_app/Dashboard/BuyerDashboard/shoppingCart.dart';
 
 class Product {
   final String title;
+  final String category;
   final String description;
+  final String productSKU;
   final int price;
   final int comparePrice;
   final String storeName;
@@ -20,7 +22,9 @@ class Product {
 
   Product({
     required this.title,
+    required this.category,
     required this.description,
+    required this.productSKU,
     required this.price,
     required this.comparePrice,
     required this.storeName,
@@ -239,6 +243,7 @@ class _viewAllProductState extends State<viewAllProduct> {
           int price = int.parse(productDoc['saleCost']);
           String imageUrl = productDoc['imageUrl1'] ?? '';
           String description = productDoc['description'] ?? '';
+          String productSKU = productDoc['productSKU'] ?? '';
           int comparePrice = int.parse(productDoc['compareCost']);
           String storeName = sellerDoc['storeName'] ?? '';
           String phoneNum = sellerDoc['phoneNum'] ?? '';
@@ -253,7 +258,9 @@ class _viewAllProductState extends State<viewAllProduct> {
           if (matchesCategory && matchesPrice) {
             filterResults.add(Product(
               title: title,
+              category: category,
               description: description,
+              productSKU: productSKU,
               price: price,
               comparePrice: comparePrice,
               storeName: storeName,
@@ -312,9 +319,11 @@ class _viewAllProductState extends State<viewAllProduct> {
             .then((productSnapshot) {
           productSnapshot.docs.forEach((productDoc) {
             String title = productDoc['title'];
+            String category = productDoc['category'];
             int price = int.parse(productDoc['saleCost']);
             String imageUrl = productDoc['imageUrl1'] ?? '';
             String description = productDoc['description'] ?? '';
+            String productSKU = productDoc['productSKU'] ?? '';
             int comparePrice = int.parse(productDoc['compareCost']);
             String storeName = sellerDoc['storeName'] ?? '';
             String phoneNum = sellerDoc['phoneNum'] ?? '';
@@ -324,7 +333,7 @@ class _viewAllProductState extends State<viewAllProduct> {
             String imageURL4 = productDoc['imageUrl4'] ?? '';
 
             if (title.toLowerCase().contains(query.toLowerCase())) {
-              searchResults.add(Product(title: title, description: description, price: price, comparePrice: comparePrice, storeName: storeName, phoneNum: phoneNum, email: email, imageUrl: imageUrl, imageURL2: imageURL2, imageURL3: imageURL3, imageURL4: imageURL4));
+              searchResults.add(Product(title: title, category: category, description: description, productSKU: productSKU, price: price, comparePrice: comparePrice, storeName: storeName, phoneNum: phoneNum, email: email, imageUrl: imageUrl, imageURL2: imageURL2, imageURL3: imageURL3, imageURL4: imageURL4));
             }
           });
 
@@ -340,15 +349,17 @@ class _viewAllProductState extends State<viewAllProduct> {
     });
   }
 
-  void addToCart(String title, int saleprice, int compareprice, String description, String storename, String storePhoneNo, String storeEmail, String image1, String image2, String image3, String image4) {
+  void addToCart(String title, String category, int saleprice, int compareprice, String description, String productSKU, String storename, String storePhoneNo, String storeEmail, String image1, String image2, String image3, String image4) {
     User? user = FirebaseAuth.instance.currentUser;
     String? userCartId = user?.email;
 
     FirebaseFirestore.instance.collection('buyers').doc(userCartId).collection('cart').add({
       'product title': title,
+      'product category': category,
       'product price': saleprice,
       'discount price': compareprice,
       'product description': description,
+      'productSKU': productSKU,
       'store name': storename,
       'store phoneNo': storePhoneNo,
       'store email': storeEmail,
@@ -634,7 +645,7 @@ class _viewAllProductState extends State<viewAllProduct> {
                     ),
                     IconButton(
                       onPressed: () {
-
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => viewHistory()));
                       },
                       icon: Icon(Icons.history),
                     ),
@@ -732,7 +743,9 @@ class _viewAllProductState extends State<viewAllProduct> {
                                   return Column(
                                     children: products.map<Widget>((product) {
                                       String title = product['title'];
+                                      String category = product['category'];
                                       String description = product['description'];
+                                      String productSKU = product['productSKU'];
                                       String imageUrl1 = product['imageUrl1'] ?? '';
                                       String imageUrl2 = product['imageUrl2'] ?? '';
                                       String imageUrl3 = product['imageUrl3'] ?? '';
@@ -746,7 +759,9 @@ class _viewAllProductState extends State<viewAllProduct> {
                                             context,
                                             MaterialPageRoute(builder: (context) => productListScreen(
                                               title: title,
+                                              category: category,
                                               description: description,
+                                              productSKU: productSKU,
                                               saleprice: saleprice,
                                               compareprice: compareprice,
                                               storeName: storename,
@@ -813,7 +828,7 @@ class _viewAllProductState extends State<viewAllProduct> {
                                                         style: TextStyle(
                                                           fontSize: 12,
                                                           color: Colors.black,
-                                                          fontWeight: FontWeight.bold,
+                                                          // fontWeight: FontWeight.bold,
                                                         ),
                                                         children: [
                                                           TextSpan(
@@ -867,16 +882,18 @@ class _viewAllProductState extends State<viewAllProduct> {
                                                           color: Colors.black,
                                                           width: 1.0,
                                                         ),
-                                                        color: Colors.white,
+                                                        color: Colors.transparent,
                                                         borderRadius: BorderRadius.circular(5),
                                                       ),
                                                       child: TextButton(
                                                         onPressed: () {
                                                           addToCart(
                                                               title,
+                                                              category,
                                                               saleprice,
                                                               compareprice,
                                                               description,
+                                                              productSKU,
                                                               storename,
                                                               phoneNum,
                                                               email,
@@ -911,7 +928,9 @@ class _viewAllProductState extends State<viewAllProduct> {
                                                             context,
                                                             MaterialPageRoute(builder: (context) => productListScreen(
                                                               title: title,
+                                                              category: category,
                                                               description: description,
+                                                              productSKU: productSKU,
                                                               saleprice: saleprice,
                                                               compareprice: compareprice,
                                                               storeName: storename,
@@ -1115,7 +1134,9 @@ class _viewAllProductState extends State<viewAllProduct> {
                                             MaterialPageRoute(
                                               builder: (context) => productListScreen(
                                                 title: result.title,
+                                                category: result.category,
                                                 description: result.description,
+                                                productSKU: result.productSKU,
                                                 saleprice: result.price,
                                                 compareprice: result.comparePrice,
                                                 storeName: result.storeName,
@@ -1205,7 +1226,9 @@ class _viewAllProductState extends State<viewAllProduct> {
                                   MaterialPageRoute(
                                     builder: (context) => productListScreen(
                                       title: product.title,
+                                      category: product.category,
                                       description: product.description,
+                                      productSKU: product.productSKU,
                                       saleprice: product.price.toInt(),
                                       compareprice: product.comparePrice.toInt(), // Example value
                                       storeName: product.storeName, // Example value
@@ -1336,9 +1359,11 @@ class _viewAllProductState extends State<viewAllProduct> {
                                               onPressed: () {
                                                 addToCart(
                                                   product.title,
+                                                  product.category,
                                                   product.price.toInt(),
                                                   product.comparePrice.toInt(), // Example value
-                                                  product.description, // Example value
+                                                  product.description,
+                                                  product.productSKU, // Example value
                                                   product.storeName, // Example value
                                                   product.phoneNum, // Example value
                                                   product.email, // Example value
@@ -1373,7 +1398,9 @@ class _viewAllProductState extends State<viewAllProduct> {
                                                   context,
                                                   MaterialPageRoute(builder: (context) => productListScreen(
                                                     title: product.title,
-                                                    description: product.description, // Example value
+                                                    category: product.category,
+                                                    description: product.description,
+                                                    productSKU: product.productSKU,// Example value
                                                     saleprice: product.price.toInt(),
                                                     compareprice: product.comparePrice.toInt(), // Example value
                                                     storeName: product.storeName, // Example value
@@ -1416,3 +1443,45 @@ class _viewAllProductState extends State<viewAllProduct> {
     );
   }
 }
+
+class viewHistory extends StatefulWidget {
+  const viewHistory({super.key});
+
+  @override
+  State<viewHistory> createState() => _viewHistoryState();
+}
+
+class _viewHistoryState extends State<viewHistory> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Spacer(),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 5),
+              child: Text('Search History',
+                  style: TextStyle(
+                      color: Colors.black, fontWeight: FontWeight.w500)),
+            ),
+            Spacer(),
+            IconButton(
+              onPressed: () {
+
+              },
+              icon: Text("Clear"),
+            ),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+
+        ],
+      ),
+    );
+  }
+}
+

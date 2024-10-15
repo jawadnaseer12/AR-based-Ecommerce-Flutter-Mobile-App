@@ -7,7 +7,9 @@ import 'package:stitchhub_app/Dashboard/BuyerDashboard/shoppingCart.dart';
 
 class Product {
   final String title;
+  final String category;
   final String description;
+  final String productSKU;
   final int price;
   final int comparePrice;
   final String storeName;
@@ -20,7 +22,9 @@ class Product {
 
   Product({
     required this.title,
+    required this.category,
     required this.description,
+    required this.productSKU,
     required this.price,
     required this.comparePrice,
     required this.storeName,
@@ -72,15 +76,17 @@ class _categoryScreenState extends State<categoryScreen> {
     });
   }
 
-  void addToCart(String title, int saleprice, int compareprice, String description, String storename, String storePhoneNo, String storeEmail, String image1, String image2, String image3, String image4) {
+  void addToCart(String title, String category, int saleprice, int compareprice, String description, String productSKU, String storename, String storePhoneNo, String storeEmail, String image1, String image2, String image3, String image4) {
     User? user = FirebaseAuth.instance.currentUser;
     String? userCartId = user?.email;
 
     FirebaseFirestore.instance.collection('buyers').doc(userCartId).collection('cart').add({
       'product title': title,
+      'product category': category,
       'product price': saleprice,
       'discount price': compareprice,
       'product description': description,
+      'productSKU': productSKU,
       'store name': storename,
       'store phoneNo': storePhoneNo,
       'store email': storeEmail,
@@ -203,7 +209,9 @@ class _categoryScreenState extends State<categoryScreen> {
                                   return Column(
                                     children: products.map<Widget>((product) {
                                       String title = product['title'];
+                                      String category = product['category'];
                                       String description = product['description'];
+                                      String productSKU = product['productSKU'];
                                       String imageUrl1 = product['imageUrl1'] ?? '';
                                       String imageUrl2 = product['imageUrl2'] ?? '';
                                       String imageUrl3 = product['imageUrl3'] ?? '';
@@ -217,7 +225,9 @@ class _categoryScreenState extends State<categoryScreen> {
                                             context,
                                             MaterialPageRoute(builder: (context) => productListScreen(
                                               title: title,
+                                              category: category,
                                               description: description,
+                                              productSKU: productSKU,
                                               saleprice: saleprice,
                                               compareprice: compareprice,
                                               storeName: storename,
@@ -338,16 +348,18 @@ class _categoryScreenState extends State<categoryScreen> {
                                                           color: Colors.black,
                                                           width: 1.0,
                                                         ),
-                                                        color: Colors.white,
+                                                        color: Colors.transparent,
                                                         borderRadius: BorderRadius.circular(5),
                                                       ),
                                                       child: TextButton(
                                                         onPressed: () {
                                                           addToCart(
                                                               title,
+                                                              category,
                                                               saleprice,
                                                               compareprice,
                                                               description,
+                                                              productSKU,
                                                               storename,
                                                               phoneNum,
                                                               email,
@@ -382,7 +394,9 @@ class _categoryScreenState extends State<categoryScreen> {
                                                             context,
                                                             MaterialPageRoute(builder: (context) => productListScreen(
                                                               title: title,
+                                                              category: category,
                                                               description: description,
+                                                              productSKU: productSKU,
                                                               saleprice: saleprice,
                                                               compareprice: compareprice,
                                                               storeName: storename,

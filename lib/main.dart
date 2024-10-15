@@ -59,7 +59,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ScreenUtilInit(
       designSize: Size(375, 812),
-
       child: ChangeNotifierProvider(
         create: (context) => GoogleSignInProvider(),
         child: MaterialApp(

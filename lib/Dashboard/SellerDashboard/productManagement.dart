@@ -258,10 +258,14 @@ class _productManagementState extends State<productManagement> {
                         child: Column(
                           children: products.map((product) {
                             String title = product['title'];
+                            String description = product['description'];
                             String imageUrl = product['imageUrl1'] ?? '';
-                            int activesaleprice = int.parse(product['saleCost']);
-                            int activecompareprice = int.parse(product['compareCost']);
-                            // int productStock = int.parse(product['stock']);
+                            String imageUrl2 = product['imageUrl2'] ?? '';
+                            String imageUrl3 = product['imageUrl3'] ?? '';
+                            String imageUrl4 = product['imageUrl4'] ?? '';
+                            int salePrice = int.parse(product['saleCost']);
+                            int comparePrice = int.parse(product['compareCost']);
+                            int productStock = int.parse(product['stock']);
                             String productId = product.id;
 
                             return Container(
@@ -317,14 +321,14 @@ class _productManagementState extends State<productManagement> {
                                                 ),
                                                 children: [
                                                   TextSpan(
-                                                    text: '${activesaleprice}  ',
+                                                    text: '${salePrice}  ',
                                                     style: TextStyle(
                                                       fontSize: 15,
                                                       fontWeight: FontWeight.bold,
                                                     ),
                                                   ),
                                                   TextSpan(
-                                                    text: '${activecompareprice}',
+                                                    text: '${comparePrice}',
                                                     style: TextStyle(
                                                       fontSize: 15,
                                                       decoration: TextDecoration.lineThrough,
@@ -344,7 +348,7 @@ class _productManagementState extends State<productManagement> {
                                                 ),
                                                 children: [
                                                   TextSpan(
-                                                    text: '0',
+                                                    text: '${productStock}',
                                                     style: TextStyle(
                                                       fontSize: 15,
                                                     ),
