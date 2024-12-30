@@ -12,6 +12,9 @@ import 'package:stitchhub_app/Dashboard/BuyerDashboard/checkoutProcess.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:stitchhub_app/Dashboard/inAppMessaging.dart';
 import 'package:intl/intl.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+import '../../ArModules/arWebView.dart';
 
 class productListScreen extends StatefulWidget {
   final String title;
@@ -139,10 +142,17 @@ class _productListScreenState extends State<productListScreen> {
   // }
 
   void tryOnCloth() async{
-    final imagePicker = await picker.pickImage(source: ImageSource.camera);
-    if (imagePicker != null) {
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => ARWebViewScreen(videoFeedUrl: 'http://192.168.10.11:5000/video_feed'),
+    //   ),
+    // );
 
-    }
+    // final imagePicker = await picker.pickImage(source: ImageSource.camera);
+    // if (imagePicker != null) {
+    //
+    // }
   }
 
   void _showImageDialog(String imageUrl) {
@@ -631,8 +641,12 @@ class _productListScreenState extends State<productListScreen> {
                                   // ]
                                 ),
                                 child: Center(
-                                    child: Image(
-                                        image: AssetImage('assets/whiteHanger.png'), height: 45, width: 45)),
+                                    child:
+                                        // FaIcon(FontAwesomeIcons.weightHanging),
+                                        Icon(Icons.shopping_bag_outlined)
+                                    // Image(
+                                    //     image: AssetImage('assets/whiteHanger.png'), height: 45, width: 45)
+                                ),
                               ),
                             ),
                           ],

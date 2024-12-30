@@ -37,6 +37,8 @@ dependencies:
   firebase_storage: ^11.7.0
   flutter_facebook_auth: ^6.2.0
   fl_chart: ^0.69.0
+  webview_flutter: ^4.10.0
+#  model_viewer_plus: ^1.9.1
 
   # State Management
   provider: ^6.1.2
